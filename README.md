@@ -7,6 +7,8 @@ or it can be plugged into any device that understands MIDI.
 The ArpCube can act as a standalone MIDI trigger or it can be used as an arpeggiator. 
 When in arpeggiator mode, the ArpCube allows a user to step through a selected sequence of notes based on the input buttons. 
 
+
+Powered by USB C. MIDI signals are sent using a DIN socket. 
 ## Modes
 
 **MIDI Mode**
