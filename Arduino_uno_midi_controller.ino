@@ -1,11 +1,15 @@
 
+/*Arduino Code for the ARP CUBE 
+ * written by Hanna Thayyil 
+ * https://github.com/hthayyil/ArpCube
+*/
+
 #include <SoftwareSerial.h>
 #include <MIDImap.h>
 #include <ArduinoSTL.h>
 #include <LiquidCrystal.h> 
 #include <Wire.h>
 #include "Adafruit_Trellis.h"
-//#include "MIDIUSB.h"
 #include <MIDI.h>
 #include <ARPbeta.h>
 
@@ -16,6 +20,8 @@
 #define MIDICONTROLLER 0
 #define ARPCUBE 1
 #define POLY 2
+#define FUNCTION 3
+
 
 // Define MODE: MIDICONTROLLER MODE is set as default
 int MODE = MIDICONTROLLER; 
@@ -42,9 +48,14 @@ Adafruit_TrellisSet trellis =  Adafruit_TrellisSet(&matrix0, &matrix1);
  OCTAVE POT - potPin is on analog pin 0
  TEMPO POT is on analog pin 1
  SWITCH is on digital Pin 6
+ SWITCH 2 is on digital pin7
  KEY POT is on pin A2
 */
 
+//DIN 2 to GROUND
+//DIN 4 to 220 OHM resistor to D1
+//DIN 5 to 5V
+ 
 
 //SET MIDI COMMANDS
 int velocity = 100;//velocity of MIDI notes, must be between 0 and 127
@@ -68,17 +79,20 @@ int switchPin = 6;
 
 //BUTTON is on pin 7
 int button = 7;
-unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
-unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
-int prevButtonState = LOW;
+//unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+//unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
+//int prevButtonState = LOW;
 
+//function button is on pin 3
+int funcButton = 3;
+int led = 4; 
 
 //POTENTIOMETER to indicate key is on pin A2
 int keyPot = 2;
 long keyVal;
 
 volatile int arpSeq[32];
-bool wasPressed = false;
+//bool wasPressed = false;
 //volatile int polySeq[8][4];
 
 //used for poly mode
@@ -100,6 +114,9 @@ int noteOrder[32] = {
   31, 27, 23, 19, 15, 11, 7, 3
 };
 
+
+int numSteps = 31;
+
 //Class objects- defined in the MIDImap and ARP libraries
 MIDImap mp;
 ARP arp;
@@ -112,14 +129,32 @@ LiquidCrystal lcd(13, 12, 8, 9, 10, 11);
 const byte rxPin = 0; // not used for the moment
 const byte txPin = 1;
 SoftwareSerial mySerial(rxPin, txPin);
+boolean changed = false;
 
 //ClearSequence: Resets the ARP sequence
 void clearSequence(){
    for(int i=0; i<32; i++){
       arpSeq[i] = -1;
    }
+   numSteps = 31;
 }
 
+//function to clear all LEDS
+void clearLEDS(){
+      for (uint8_t i=0; i<numKeys; i++) {
+           // MIDImessage(noteOFF, mp.noteCalc(i, analogRead(potPin),analogRead(keyPot)), velocity);//turn note off 
+            trellis.clrLED(i);
+        }     
+      trellis.writeDisplay();    
+}
+
+//function to clear all notes turn everything off
+void clearNotes(){
+ for (uint8_t i=0; i<127; i++) {
+   MIDImessage(noteOFF, i, velocity);//turn note off 
+}
+  
+}
 
   //send MIDI message through USB port
 void MIDImessage(int command, int MIDInote, int MIDIvelocity) {
@@ -134,6 +169,8 @@ void setup() {
    pinMode(button, INPUT);
    
    pinMode( txPin, OUTPUT);
+   pinMode(funcButton, INPUT);
+   pinMode(led, OUTPUT);
    
    //initialize contrast for LCD
    analogWrite(5,Contrast);
@@ -142,7 +179,7 @@ void setup() {
    lcd.print("ARPCUBE");
    
    Serial.begin(31250);
-  // Serial.begin(9600);
+ // Serial.begin(9600);
    clearSequence();
   // INT pin requires a pullup
   pinMode(INTPIN, INPUT);
@@ -194,15 +231,18 @@ void loop() {
     keyVal = analogRead(keyPot);
     lcd.print(mp.printKey(keyVal).c_str());
   }
+ 
+  
    else { 
-        MODE = ARPCUBE;
-////   lcd.setCursor(0,0);
-////    lcd.print("ARPMODE BPM: ");
-////     lcd.print(tempo*60000);
-////    lcd.setCursor(0, 1); 
-////    keyVal = analogRead(keyPot);
-////    lcd.print(mp.printKey(keyVal).c_str());
-}
+     clearNotes();
+      MODE = ARPCUBE;
+      lcd.setCursor(0,0);
+      lcd.print("MONO BPM: ");
+      lcd.print(BPM);
+      lcd.setCursor(0, 1); 
+      keyVal = analogRead(keyPot);
+      lcd.print(mp.printKey(keyVal).c_str());
+   }
   
   delay(30); // 30ms delay helps for latency
   
@@ -211,25 +251,24 @@ void loop() {
 
 
   if (keyVal!= analogRead(keyPot)){
-      //lcd.clear();
+     
      lcd.setCursor(0, 1); 
      keyVal = analogRead(keyPot);
      lcd.print(mp.printKey(keyVal).c_str());
   }
 
 
-  
+ 
   //MIDICONTROLLER MODE
  if  (MODE == MIDICONTROLLER) {
     
-        
     // If a button was just pressed or released
     if (trellis.readSwitches()) {
       // go through every button and check new status
       
       for (uint8_t i=0; i<numKeys; i++) {
         if (trellis.justPressed(i)) {
-            
+          
             MIDImessage(noteON, mp.noteCalc(i, potVal, keyVal), velocity);//turn note on
             trellis.setLED(i);
         } 
@@ -239,9 +278,11 @@ void loop() {
             trellis.clrLED(i);
         }
       }
+      
       // tell the trellis to set the LEDs we requested
       trellis.writeDisplay();
     }
+   
   
   } //end midicontroller mode
 
@@ -250,13 +291,13 @@ void loop() {
 
 while (MODE ==ARPCUBE) {
       lcd.setCursor(0,0);
-      lcd.print("ARPMODE BPM: ");
-      lcd.print(tempo*60000);
+      lcd.print("MONO BPM: ");
+      lcd.print(BPM);
       lcd.setCursor(0, 1); 
       keyVal = analogRead(keyPot);
       lcd.print(mp.printKey(keyVal).c_str());
   
-  for (uint8_t k=0; k<numKeys; k++) {
+  for (uint8_t k=0; k<=numSteps; k++) {
   
   //read Mode switch 
     if (digitalRead(switchPin) == HIGH) {
@@ -265,19 +306,28 @@ while (MODE ==ARPCUBE) {
     }
     
   if (digitalRead(button) == HIGH) {
+     lcd.clear();
      MODE = POLY;
      break;   
+  }
+  
+  if (digitalRead(funcButton) == HIGH) {
+      digitalWrite(led, HIGH);
+      lcd.clear();
+      MODE = FUNCTION;
+      changed = false;
+     break;
   }
 
   
    //reading the TEMPO POT
     if(prevTempo != analogRead(tempoPin)){
      prevTempo = analogRead(tempoPin);
-     BPM = map(prevTempo, 0, 1023, 40, 800);
+     BPM = map(prevTempo, 0, 1023, 80, 800);
      //tempo indiciates BPM in ms
      tempo = 60000/BPM;
      lcd.setCursor(0,0);
-     lcd.print("ARPMODE Bpm: ");
+     lcd.print("MONO BPM: ");
      lcd.print(BPM);
      lcd.print("    ");    
   }
@@ -313,9 +363,9 @@ while (MODE ==ARPCUBE) {
       trellis.writeDisplay();
       
       if (arpSeq[k] != -1)  MIDImessage(noteON, mp.noteCalc(arpSeq[k], potVal,keyVal), velocity);//turn note on     
-     delay(tempo);
+           delay(tempo);
      
-      if (arpSeq[k] != -1)  MIDImessage(noteOFF, mp.noteCalc(arpSeq[k], potVal,keyVal), velocity);//turn note on  
+      if (arpSeq[k] != -1)  MIDImessage(noteOFF, mp.noteCalc(arpSeq[k], potVal,keyVal), velocity);//turn note off
       
     trellis.clrLED(noteOrder[k]);
     trellis.writeDisplay(); 
@@ -326,10 +376,10 @@ while (MODE ==ARPCUBE) {
 }//end while ARP
 
  while (MODE == POLY) {
-  
     lcd.setCursor(0,0);
-    lcd.print("POLYMODE BPM: ");
-    lcd.print(tempo*60000);
+     lcd.print("POLY BPM: ");
+     lcd.print(BPM);
+     lcd.print("    ");    
     lcd.setCursor(0, 1); 
     keyVal = analogRead(keyPot);
     lcd.print(mp.printKey(keyVal).c_str());
@@ -338,8 +388,7 @@ while (MODE ==ARPCUBE) {
 
      //read Mode switch 
     if (digitalRead(button) == LOW) {
-       //Serial.print("Read BUTTON in POLU");
-     
+    
        MODE = ARPCUBE;
        break;
       }
@@ -363,7 +412,7 @@ while (MODE ==ARPCUBE) {
      //tempo indiciates BPM in ms
      tempo = 60000/BPM;
      lcd.setCursor(0,0);
-     lcd.print("POLYMODE BPM: ");
+     lcd.print("POLY BPM: ");
      lcd.print(BPM);
      lcd.print("    ");    
   }
@@ -424,5 +473,100 @@ while (MODE ==ARPCUBE) {
    
   
  }//end if MODE = POLY
+ 
+ int curStep = 0;
+ int tempNumSteps = 31;
+
+
+ //FUNCTION MODE
+ while (MODE == FUNCTION){
+ delay(300);
+   lcd.setCursor(0,0);
+   lcd.print("FUNCTION     ");
+   //reading the KEY POT
+   if (changed == true) {
+        digitalWrite(led, LOW);
+        changed = false;
+        MODE = ARPCUBE;
+        clearLEDS();
+        break;
+   }
+
+while(1) {
+  delay(90);
+  if( digitalRead(funcButton) == HIGH || changed == true) {
+    changed = true;
+    break;
+  }
+
+  //if the key pot changes
+      if ((keyVal > analogRead(keyPot) + 10) || (keyVal < analogRead(keyPot) - 10 )){
+       
+           keyVal = analogRead(keyPot);
+           tempNumSteps = map(keyVal, 0, 1023, 0, 31);
+           lcd.setCursor(0, 1); 
+           lcd.print("Seq Length: ");
+           lcd.print(tempNumSteps + 1);
+           lcd.print("     ");    
+       
+
+
+         for (uint8_t q=0; q<32; q++) {
+  
+          if (q <= tempNumSteps) trellis.setLED(noteOrder[q]);
+          else trellis.clrLED(noteOrder[q]);
+        }
+          trellis.writeDisplay();
+      }//end if key pot changes
+
+      //if the tempo pin changes
+       if( (prevTempo > analogRead(tempoPin) + 10) || (prevTempo < analogRead(tempoPin) - 20) ) {
+      
+          prevTempo = analogRead(tempoPin);
+          curStep = map(prevTempo, 0, 1023, 0, 31);
+       
+         //turn off all LED's except the current step 
+          for (uint8_t q=0; q<32; q++) {
+          if (q == curStep)  { 
+            trellis.setLED(noteOrder[curStep]);
+            }
+            else trellis.clrLED(noteOrder[q]);
+           }
+             trellis.writeDisplay();
+   
+    
+             
+        }//end if tempo pin changes
+       
+
+      if (trellis.readSwitches()) {
+      // go through every button and check new status
+ 
+      for (uint8_t i=0; i<numKeys; i++) {
+        if (trellis.justPressed(i)) {
+            arpSeq[curStep] = i;
+            MIDImessage(noteON, mp.noteCalc(i, analogRead(potPin), analogRead(keyPot)), velocity);//turn note on
+            trellis.setLED(i);
+            //if a key is pressed and they are also pressing the function 
+        
+        } 
+         // if it was released, turn it off
+         else if (trellis.justReleased(i)) {
+            MIDImessage(noteOFF, mp.noteCalc(i, analogRead(potPin),analogRead(keyPot)), velocity);//turn note off 
+            trellis.clrLED(i);
+        }
+      }
+      // tell the trellis to set the LEDs we requested
+      trellis.writeDisplay();
+   
+    }//end if read switches
+
+
+
+}//end while 1
+numSteps = tempNumSteps;
+
+  
+ } //end while mode == function
   
 }//end loop 
