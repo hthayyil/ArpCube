@@ -1,0 +1,31 @@
+*Pick And Place List
+*Company=
+*Author=
+*eMail=
+*
+*Project=second-try again
+*Date=16:15:13
+*CreatedBy=Fritzing 0.8.7b.01.24.1bf5
+*
+*
+*Coordinates in mm, always center of component
+*Origin 0/0=Lower left corner of PCB
+*Rotation in degree (0-360, math. pos.)
+*
+*No;Value;Package;X;Y;Rotation;Side;Name
+1;220;THT;35.56;-26.4347;-180;Bottom;R4
+2;;alps_pot;109.18;-27.1086;90;Bottom;U3
+3;;alps_pot;78.7;-27.1086;90;Bottom;U2
+4;;alps_pot;93.94;-27.1086;90;Bottom;U1
+5;;[THT];86.6501;-61.2847;90;Bottom;S1
+6;;;38.323;-27.7047;0;Bottom;Part1
+7;;lcd-16x2;42.16;-46.4948;0;Bottom;U4
+8;220;THT;33.02;-18.8147;-180;Bottom;R3
+9;;cap-pth-small2;95.25;-13.7347;0;Bottom;C1
+10;220;THT;35.56;-34.0547;0;Bottom;R1
+11;;cap-pth-small2;107.95;-13.7347;0;Bottom;C3
+12;220;THT;35.56;-31.5147;0;Bottom;R2
+13;;THT;12.4708;-16.2749;-90;Bottom;DIN1
+14;;[THT];96.8101;-61.2847;90;Bottom;S2
+15;;;147.32;-35.3247;180;Bottom;TRELLIS2
+16;;cap-pth-small2;80.01;-13.7347;0;Bottom;C2
