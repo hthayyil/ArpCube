@@ -1,5 +1,5 @@
 # ArpCube
-**Arduino Code and schematics for the ArpCube Midi Controller created by Hanna Thayyil**
+**Arduino Code and schematics for the ArpCube Midi Controller created by Sister Engineering**
 
 
 The ArpCube is an Arduino powered MIDI controller. The cube can be plugged into a computer to process the button controls into MIDI, 
